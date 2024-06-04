@@ -2,26 +2,45 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
-class Client
+public class UDPServer
 {
-    static void Main(string[] args)
-    {
-        IPAddress serverAddress = IPAddress.Parse("192.168.56.101"); // Укажите IP адрес сервера (виртуальной машины)
-        int serverPort = 4004; // Укажите порт сервера
+    private readonly IPAddress localAddress;
+    private readonly int localPort;
+    private readonly Socket receiver;
+    private int receivedPackets = 0;
 
-        using Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+    public UDPServer(string ipAddress, int port)
+    {
+        localAddress = IPAddress.Parse(ipAddress);
+        localPort = port;
+        receiver = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        receiver.Bind(new IPEndPoint(localAddress, localPort));
+    }
+
+    public async Task ReceiveMessageAsync()
+    {
+        byte[] data = new byte[1024];
 
         while (true)
         {
-            Console.Write("Введите сообщение для отправки: ");
-            string message = Console.ReadLine();
-
-            byte[] data = Encoding.UTF8.GetBytes(message);
-            EndPoint serverEP = new IPEndPoint(serverAddress, serverPort);
-            sender.SendTo(data, serverEP);
-            Console.WriteLine("Сообщение отправлено!");
+            var result = await receiver.ReceiveFromAsync(data, SocketFlags.None, new IPEndPoint(IPAddress.Any, 0));
+            int packetNumber = BitConverter.ToInt32(data, 0); // извлекаем номер пакета
+            receivedPackets++;
+            Console.WriteLine($"Получен пакет №{packetNumber}, Всего получено: {receivedPackets}");
         }
- 
+    }
+}
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        string ipAddress = "192.168.56.1"; // IP хоста
+        int port = 4004;
+
+        UDPServer udpServer = new UDPServer(ipAddress, port);
+        await udpServer.ReceiveMessageAsync();
     }
 }
