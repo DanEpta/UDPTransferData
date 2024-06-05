@@ -14,6 +14,7 @@ async Task ExecuteAsync()
     // запускаем получение сообщений
     await Task.WhenAll(
         udpServer.ReceiveMessageAsync(),
+        udpServer.CheckLostPacketsAsync(),
         udpServer.UpdateStatisticsAsync()
     );
 }

@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Net.Sockets;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net;
-
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace UdpServer.Server
 {
@@ -19,7 +21,9 @@ namespace UdpServer.Server
         private int lostPackets = 0;
         private int lastPacketNumber = -1;
 
+        private ConcurrentQueue<int> packetQueue = new ConcurrentQueue<int>();
         private List<int> idLossPackets = new List<int>();
+
 
         public UDPServer(string ipAddressRemote, string ipAddressSend, int port)
         {
@@ -30,35 +34,46 @@ namespace UdpServer.Server
             receiver = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         }
 
-        // прием сообщений
         public async Task ReceiveMessageAsync()
         {
-            byte[] data = new byte[65535]; // буфер для получаемых данных
-            // запускаем получение сообщений по адресу remoteAddress:remotePort
+            byte[] data = new byte[packetSize]; // буфер для получаемых данных
             receiver.Bind(new IPEndPoint(remoteAddress, remotePort));
-
-            sender.Bind(new IPEndPoint(sendAddress, remotePort + 1));
 
             while (true)
             {
-                // получаем данные в массив data
                 var result = await receiver.ReceiveFromAsync(data, new IPEndPoint(IPAddress.Any, 0));
                 int packetNumber = BitConverter.ToInt32(data, 0); // извлекаем номер пакета
-                receivedPackets++;
+                packetQueue.Enqueue(packetNumber);
+            }
+        }
 
-                while (packetNumber > lastPacketNumber + 1)
+        // проверка потерянных пакетов
+        public async Task CheckLostPacketsAsync()
+        {
+            while (true)
+            {
+                while (packetQueue.TryDequeue(out int packetNumber))
                 {
-                    int lostPacketNumber = lastPacketNumber + 1;
-                    idLossPackets.Add(lostPacketNumber); // udalit potom
-                    lostPackets++; // считаем количество потерянных пакетов
-                    lastPacketNumber++;
+                    receivedPackets++;
 
-                    // Отправка номера потерянного пакета клиенту
-                    byte[] lostPacketData = BitConverter.GetBytes(lostPacketNumber);
-                    await sender.SendToAsync(lostPacketData, new IPEndPoint(sendAddress, remotePort + 1));
+                    // Проверка на потерянные пакеты
+                    if (packetNumber > lastPacketNumber + 1)
+                    {
+                        for (int lostPacketNumber = lastPacketNumber + 1; lostPacketNumber < packetNumber; lostPacketNumber++)
+                        {
+                            idLossPackets.Add(lostPacketNumber); // добавляем в список потерянных пакетов
+                            lostPackets++; // считаем количество потерянных пакетов
+
+                            // Отправка номера потерянного пакета клиенту
+                            byte[] lostPacketData = BitConverter.GetBytes(lostPacketNumber);
+                            await sender.SendToAsync(new ArraySegment<byte>(lostPacketData), SocketFlags.None, new IPEndPoint(sendAddress, remotePort + 1));
+                        }
+                    }
+
+                    lastPacketNumber = packetNumber;
                 }
 
-                lastPacketNumber = packetNumber;
+                await Task.Delay(100); // Задержка для предотвращения чрезмерного использования ресурсов
             }
         }
 
@@ -72,8 +87,10 @@ namespace UdpServer.Server
                 Console.WriteLine($"Пакеты потеряны: {lostPackets}");
                 Console.WriteLine($"Потери пакетов: {(lostPackets / (double)(receivedPackets + lostPackets)) * 100:F2}%");
 
-                foreach (var id in idLossPackets)
+                /*
+                foreach(var id in idLossPackets)
                     Console.Write($"{id}  ");
+                */
 
                 await Task.Delay(5000);
             }
