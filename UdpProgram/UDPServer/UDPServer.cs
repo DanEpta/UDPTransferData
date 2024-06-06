@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace UdpProgram.Udp
 {
@@ -12,6 +10,7 @@ namespace UdpProgram.Udp
         private Socket receiver;
         private readonly IPAddress localAddress;
         private readonly int localPort;
+        private readonly UInt16 SizeSegment = 1400;
         private int receivedPackets = 0;
 
         public UDPServer(string localIpAddress, int localPort)
@@ -36,17 +35,17 @@ namespace UdpProgram.Udp
                 List<UdpSegment> segments = new List<UdpSegment>();
                 int offset = 0;
 
-                while (offset < packet.SegmentsData.Length)
+                while (offset < packet.Data.Length)
                 {
-                    int segmentLength = Math.Min(1024 + 4, packet.SegmentsData.Length - offset);
+                    int segmentLength = Math.Min(SizeSegment + 1, packet.Data.Length - offset);
                     byte[] segmentBytes = new byte[segmentLength];
-                    Buffer.BlockCopy(packet.SegmentsData, offset, segmentBytes, 0, segmentLength);
+                    Buffer.BlockCopy(packet.Data, offset, segmentBytes, 0, segmentLength);
                     UdpSegment segment = UdpSegment.FromBytes(segmentBytes);
                     segments.Add(segment);
                     offset += segmentLength;
                 }
 
-                Console.WriteLine($"Получен пакет {packet.PacketId} с {segments.Count} сегментами");
+                Console.WriteLine($"Получен пакет {packet.PacketId} размером {packet.ToBytes().Length} байт, с {segments.Count} сегментами");
                 receivedPackets++;
             }
         }

@@ -1,32 +1,40 @@
-﻿namespace UdpProgram.Udp
+﻿
+
+namespace UdpProgram.Udp
 {
     public class UdpPacket
     {
-        public int PacketId { get; set; }
-        public byte[] SegmentsData { get; set; }
+        public uint PacketId { get; set; }
+        public byte[] Data { get; set; }
 
-        public UdpPacket(int id, byte[] segmentsData)
+        private readonly UInt16 SizeSegment = 1400;
+
+
+        public UdpPacket(uint id, byte[] data)
         {
             PacketId = id;
-            SegmentsData = segmentsData;
+            Data = data;
         }
 
+        
         public byte[] ToBytes()
         {
             List<byte> result = new List<byte>();
 
             byte[] packetIdBytes = BitConverter.GetBytes(PacketId);
             result.AddRange(packetIdBytes);
-            result.AddRange(SegmentsData);
+            result.AddRange(Data);
 
             return result.ToArray();
         }
+        
 
         public static UdpPacket FromBytes(byte[] bytes)
         {
-            int packetId = BitConverter.ToInt32(bytes, 0);
+            uint packetId = BitConverter.ToUInt32(bytes, 0);
             byte[] segmentsData = new byte[bytes.Length - 4];
             Buffer.BlockCopy(bytes, 4, segmentsData, 0, segmentsData.Length);
+
             return new UdpPacket(packetId, segmentsData);
         }
     }

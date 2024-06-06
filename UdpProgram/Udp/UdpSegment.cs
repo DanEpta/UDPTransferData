@@ -2,30 +2,38 @@
 {
     public class UdpSegment
     {
-        public int SegmentId { get; set; }
+        public byte SegmentId { get; set; }
+        public uint PacketId { get; set; }
         public byte[] Data { get; set; }
 
-        public UdpSegment(int id, byte[] data)
+
+        public UdpSegment(byte segmentId, uint packetId,  byte[] data)
         {
-            SegmentId = id;
+            SegmentId = segmentId;
+            PacketId = packetId;
             Data = data;
         }
+
 
         public byte[] ToBytes()
         {
             List<byte> result = new List<byte>();
-            byte[] segmentIdBytes = BitConverter.GetBytes(SegmentId);
-            result.AddRange(segmentIdBytes);
+
+            result.Add(SegmentId);
+            result.AddRange(BitConverter.GetBytes(PacketId));
             result.AddRange(Data);
+
             return result.ToArray();
         }
 
         public static UdpSegment FromBytes(byte[] bytes)
         {
-            int segmentId = BitConverter.ToInt32(bytes, 0);
-            byte[] data = new byte[bytes.Length - 4];
-            Buffer.BlockCopy(bytes, 4, data, 0, data.Length);
-            return new UdpSegment(segmentId, data);
+            byte segmentId = bytes[0];
+            uint packetId = BitConverter.ToUInt32(bytes, 1);
+            byte[] data = new byte[bytes.Length - 1];
+            Buffer.BlockCopy(bytes, 5, data, 0, data.Length);
+
+            return new UdpSegment(segmentId, packetId, data);
         }
     }
 }
