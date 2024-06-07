@@ -21,8 +21,7 @@ namespace UdpProgram.Udp
         {
             List<byte> result = new List<byte>();
 
-            byte[] packetIdBytes = BitConverter.GetBytes(PacketId);
-            result.AddRange(packetIdBytes);
+            result.AddRange(BitConverter.GetBytes(PacketId));
             result.AddRange(Data);
 
             return result.ToArray();

@@ -22,31 +22,25 @@ namespace UdpProgram.Udp
 
         public async Task StartReceivingAsync()
         {
-            Console.WriteLine("Прием пакетов...");
+            Console.WriteLine("Прием сегментов...");
 
             receiver.Bind(new IPEndPoint(localAddress, localPort));
-            byte[] buffer = new byte[65535];
+            byte[] buffer = new byte[1500];
 
             while (true)
             {
-                var result = await receiver.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, new IPEndPoint(IPAddress.Any, 0));
-                UdpPacket packet = UdpPacket.FromBytes(buffer.Take(result.ReceivedBytes).ToArray());
-
-                List<UdpSegment> segments = new List<UdpSegment>();
-                int offset = 0;
-
-                while (offset < packet.Data.Length)
+                try
                 {
-                    int segmentLength = Math.Min(SizeSegment + 1, packet.Data.Length - offset);
-                    byte[] segmentBytes = new byte[segmentLength];
-                    Buffer.BlockCopy(packet.Data, offset, segmentBytes, 0, segmentLength);
-                    UdpSegment segment = UdpSegment.FromBytes(segmentBytes);
-                    segments.Add(segment);
-                    offset += segmentLength;
-                }
+                    // Прием данных
+                    var result = await receiver.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, new IPEndPoint(IPAddress.Any, 0));
+                    UdpSegment segment = UdpSegment.FromBytes(buffer.Take(result.ReceivedBytes).ToArray());
 
-                Console.WriteLine($"Получен пакет {packet.PacketId} размером {packet.ToBytes().Length} байт, с {segments.Count} сегментами");
-                receivedPackets++;
+                    Console.WriteLine($"Получен сегмент {segment.SegmentId} пакета {segment.PacketId} размером {segment.ToBytes().Length} байт");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка при приеме сегмента: {ex.Message}");
+                }
             }
         }
     }

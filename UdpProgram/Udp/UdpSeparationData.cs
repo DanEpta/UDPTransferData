@@ -4,7 +4,7 @@ namespace UdpProgram.Udp
 {
     public class UdpSeparationData
     {
-        private static readonly int MaxSizeDataPacket = 65439;
+        private static readonly int MaxSizeDataPacket = 65000; //65439;
         private static readonly UInt16 SizeDataSegment = 1400;
 
 

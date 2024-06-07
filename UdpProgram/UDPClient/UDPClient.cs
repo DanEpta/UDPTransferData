@@ -23,7 +23,7 @@ public class UDPClient
     // !!Нужно этот метод править
     public async Task StartSendingAsync()
     {
-        Console.WriteLine("Отправка пакетов...");
+        Console.WriteLine("Отправка сегментов...");
 
         while (true)
         {
@@ -31,11 +31,16 @@ public class UDPClient
             List<UdpPacket> packets = UdpSeparationData.SeparationDataToPacket(data);
         
             foreach(var packet in packets)
-            {                
-                byte[] packetBytes = packet.ToBytes();
-                await sender.SendToAsync(new ArraySegment<byte>(packetBytes), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
+            {
+                List<UdpSegment> segments = UdpSeparationData.SeparationPacketToSegment(packet);
 
-                await Task.Delay(100); // задержка между отправками
+                foreach (var segment in segments)
+                {
+                    byte[] segmentBytes = segment.ToBytes();
+                    await sender.SendToAsync(new ArraySegment<byte>(segmentBytes), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
+                    await Task.Delay(10); // задержка между отправками
+                }
+                await Task.Delay(300);
             }
         }
     }

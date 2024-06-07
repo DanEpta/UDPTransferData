@@ -30,7 +30,7 @@
         {
             byte segmentId = bytes[0];
             uint packetId = BitConverter.ToUInt32(bytes, 1);
-            byte[] data = new byte[bytes.Length - 1];
+            byte[] data = new byte[bytes.Length - 5];
             Buffer.BlockCopy(bytes, 5, data, 0, data.Length);
 
             return new UdpSegment(segmentId, packetId, data);
