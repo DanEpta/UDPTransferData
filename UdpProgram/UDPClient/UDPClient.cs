@@ -20,6 +20,7 @@ public class UDPClient
         random = new Random();
     }
 
+
     // !!Нужно этот метод править
     public async Task StartSendingAsync()
     {
@@ -32,15 +33,10 @@ public class UDPClient
         
             foreach(var packet in packets)
             {
-                List<UdpSegment> segments = UdpSeparationData.SeparationPacketToSegment(packet);
-
-                foreach (var segment in segments)
-                {
-                    byte[] segmentBytes = segment.ToBytes();
-                    await sender.SendToAsync(new ArraySegment<byte>(segmentBytes), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
-                    await Task.Delay(10); // задержка между отправками
-                }
-                await Task.Delay(300);
+                byte[] packetBytes = packet.ToBytes();
+                await sender.SendToAsync(new ArraySegment<byte>(packetBytes), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
+                Console.WriteLine($"Отправлен пакет {packet.PacketId} размером в {packet.Data.Length} байт");
+                await Task.Delay(500); // задержка между отправками
             }
         }
     }

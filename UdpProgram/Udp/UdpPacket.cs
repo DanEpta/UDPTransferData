@@ -7,8 +7,6 @@ namespace UdpProgram.Udp
         public uint PacketId { get; set; }
         public byte[] Data { get; set; }
 
-        private readonly UInt16 SizeSegment = 1400;
-
 
         public UdpPacket(uint id, byte[] data)
         {
@@ -27,7 +25,6 @@ namespace UdpProgram.Udp
             return result.ToArray();
         }
         
-
         public static UdpPacket FromBytes(byte[] bytes)
         {
             uint packetId = BitConverter.ToUInt32(bytes, 0);

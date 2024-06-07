@@ -4,8 +4,7 @@ namespace UdpProgram.Udp
 {
     public class UdpSeparationData
     {
-        private static readonly int MaxSizeDataPacket = 65000; //65439;
-        private static readonly UInt16 SizeDataSegment = 1400;
+        private static readonly int MaxSizeDataPacket = 65503;
 
 
         public static List<UdpPacket> SeparationDataToPacket(byte[] data)
@@ -22,21 +21,6 @@ namespace UdpProgram.Udp
                 packets.Add(packetDataUdp);
             }
             return packets;
-        }
-
-        public static List<UdpSegment> SeparationPacketToSegment(UdpPacket packet)
-        {
-            List<UdpSegment> segments = new List<UdpSegment>();
-
-            byte[] packetBytes = packet.ToBytes();
-
-            for (int i = sizeof(uint); i < packetBytes.Length; i += SizeDataSegment)
-            {
-                byte[] segmentData = packetBytes.Skip(i).Take(SizeDataSegment).ToArray();
-                UdpSegment segment = new UdpSegment((byte)(i / SizeDataSegment), packet.PacketId, segmentData);
-                segments.Add(segment);
-            }
-            return segments;
         }
     }
 }

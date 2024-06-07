@@ -10,8 +10,7 @@ namespace UdpProgram.Udp
         private Socket receiver;
         private readonly IPAddress localAddress;
         private readonly int localPort;
-        private readonly UInt16 SizeSegment = 1400;
-        private int receivedPackets = 0;
+
 
         public UDPServer(string localIpAddress, int localPort)
         {
@@ -20,27 +19,21 @@ namespace UdpProgram.Udp
             receiver = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         }
 
+
         public async Task StartReceivingAsync()
         {
-            Console.WriteLine("Прием сегментов...");
+            Console.WriteLine("Прием пакетов...");
 
             receiver.Bind(new IPEndPoint(localAddress, localPort));
-            byte[] buffer = new byte[1500];
+            byte[] buffer = new byte[65535];
 
             while (true)
             {
-                try
-                {
-                    // Прием данных
-                    var result = await receiver.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, new IPEndPoint(IPAddress.Any, 0));
-                    UdpSegment segment = UdpSegment.FromBytes(buffer.Take(result.ReceivedBytes).ToArray());
+                // Прием данных
+                var result = await receiver.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, new IPEndPoint(IPAddress.Any, 0));
+                UdpPacket packet = UdpPacket.FromBytes(buffer.Take(result.ReceivedBytes).ToArray());
 
-                    Console.WriteLine($"Получен сегмент {segment.SegmentId} пакета {segment.PacketId} размером {segment.ToBytes().Length} байт");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Ошибка при приеме сегмента: {ex.Message}");
-                }
+                Console.WriteLine($"Получен пакет {packet.PacketId} размером {packet.ToBytes().Length} байт");              
             }
         }
     }
