@@ -1,45 +1,78 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace UdpProgram.Udp
+﻿namespace UdpProgram.Udp
 {
     public class PacketChecker
     {
         private HashSet<uint> ReceivedPacketIds;
-        private uint ExpectedPacketCount;
+        private List<uint> MissingPacketIds;
+        private uint? ExpectedPacketCount;
+        private uint MaxReceivedPacketId;
 
-        public PacketChecker(uint expectedPacketCount)
+
+        public PacketChecker(uint? expectedPacketCount = null)
         { 
             ReceivedPacketIds = new HashSet<uint>();
+            MissingPacketIds = new List<uint>();
             ExpectedPacketCount = expectedPacketCount;
+            MaxReceivedPacketId = 0;
         }
 
-        public void AddReceivedPacketId(uint packetId) =>
+
+        public void SetExpectedPacketCount(uint expectedPacketCount) =>
+            ExpectedPacketCount = expectedPacketCount;
+
+        public void ResetExpectedPacketCount() =>
+            ExpectedPacketCount = null;
+
+        public bool HasLostPackets() =>
+            MissingPacketIds.Count > 0;
+
+        public List<uint> GetMissingPacketIds() =>
+            new List<uint>(MissingPacketIds);        
+
+        public void AddReceivedPacketId(uint packetId)
+        {
             ReceivedPacketIds.Add(packetId);
-
-        public bool HasLostPackets()
-        {
-            for (uint i = 0; i < ExpectedPacketCount; i++)
-            {
-                if (!ReceivedPacketIds.Contains(i))
-                    return true;
-            }
-            return false;
+            CheckMissingPacketId(packetId);
         }
 
-        public List<uint> GetMissingPacketIds() 
+        public bool HaveAllPackages()
         {
+            if (!ExpectedPacketCount.HasValue)
+                throw new InvalidOperationException("ExpectedPacketCount is not set.");
+
+            return ReceivedPacketIds.Count == ExpectedPacketCount && !HasLostPackets();
+        }
+
+        public List<uint> FullGetMissingPacketIds() 
+        {
+            if (!ExpectedPacketCount.HasValue)
+                throw new InvalidOperationException("ExpectedPacketCount is not set.");
+
             List<uint> missingPacketsId = new List<uint>();
 
             for (uint i = 0; i <= ExpectedPacketCount; i++)
-            {
                 if (!ReceivedPacketIds.Contains(i))
                     missingPacketsId.Add(i);
-            }
+
             return missingPacketsId;
+        }
+
+        public void Reset()
+        {
+            ReceivedPacketIds.Clear();
+            MissingPacketIds.Clear();
+            ExpectedPacketCount = null;
+            MaxReceivedPacketId = 0;
+        }
+
+        private void CheckMissingPacketId(uint packetId)
+        {
+            for (uint i = MaxReceivedPacketId; i < packetId; i++)
+                if (!ReceivedPacketIds.Contains(i) && !MissingPacketIds.Contains(i))
+                    MissingPacketIds.Add(i);
+
+            MaxReceivedPacketId = packetId > MaxReceivedPacketId ? packetId : MaxReceivedPacketId; // Возможно, при false надо 0
+            MissingPacketIds.Remove(packetId);
         }
     }
 }

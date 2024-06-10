@@ -2,14 +2,16 @@
 using System.Net.Sockets;
 using System.Net;
 using UdpProgram.Udp;
+using System.Text;
 
 public class UDPClient
 {
     private Socket sender;
     private readonly IPAddress serverAddress;
     private readonly int serverPort;
-    private int sequenceNumber = 0;
     private Random random;
+
+    private const string PacketCountId = "PACKET_COUNT";
 
 
     public UDPClient(string serverIpAddress, int serverPort)
@@ -29,21 +31,32 @@ public class UDPClient
             byte[] data = GenerateRandomData();            
             List<UdpPacket> packets = UdpSeparationData.SeparationDataToPacket(data);
 
-            int totalPackets = packets.Count;
-            byte[] totalPacketsBytes = BitConverter.GetBytes(totalPackets);
-            await sender.SendToAsync(new ArraySegment<byte>(totalPacketsBytes), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
+            int totalPackets = packets.Count;            
+            await SendPacketCountAsync(totalPackets);
 
             Console.WriteLine($"Количество пакетов {totalPackets}");
-            await Task.Delay(500); // задержка между отправками
+            //await Task.Delay(500); // задержка между отправками
 
             foreach (var packet in packets)
             {
                 byte[] packetBytes = packet.ToBytes();
                 await sender.SendToAsync(new ArraySegment<byte>(packetBytes), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
                 Console.WriteLine($"Отправлен пакет {packet.PacketId} размером в {packet.Data.Length} байт");
-                await Task.Delay(500); // задержка между отправками
+                //await Task.Delay(500); // задержка между отправками
             }
         }
+    }
+
+    private async Task SendPacketCountAsync(int totalPackets)
+    {
+        byte[] idBytes = Encoding.UTF8.GetBytes(PacketCountId);
+        byte[] totalPacketsBytes = BitConverter.GetBytes(totalPackets);
+        byte[] message = new byte[idBytes.Length + totalPacketsBytes.Length];
+
+        Buffer.BlockCopy(idBytes, 0, message, 0, idBytes.Length);
+        Buffer.BlockCopy(totalPacketsBytes, 0, message, idBytes.Length, totalPacketsBytes.Length);
+
+        await sender.SendToAsync(new ArraySegment<byte>(message), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
     }
 
     private byte[] GenerateRandomData()
