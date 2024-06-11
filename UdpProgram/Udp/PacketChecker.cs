@@ -71,6 +71,12 @@
                 if (!ReceivedPacketIds.Contains(i) && !MissingPacketIds.Contains(i))
                     MissingPacketIds.Add(i);
 
+            if (packetId < MaxReceivedPacketId && !ReceivedPacketIds.Contains(packetId))
+            {
+                ReceivedPacketIds.Add(packetId);
+                MissingPacketIds.Remove(packetId);
+            }
+
             MaxReceivedPacketId = packetId > MaxReceivedPacketId ? packetId : MaxReceivedPacketId; // Возможно, при false надо 0
             MissingPacketIds.Remove(packetId);
         }
