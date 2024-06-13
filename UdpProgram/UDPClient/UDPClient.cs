@@ -6,22 +6,29 @@ using System.Text;
 
 public class UDPClient
 {
+    public List<UdpPacket> SentPackets { get; private set; }
+
     private Socket sender;
     private Socket confirmationReceiver;
     private readonly IPAddress serverAddress;
     private readonly IPAddress confirmationAddress;
     private readonly int serverPort;
     private readonly int confirmationPort;
-    private Random random;
     private bool isSending;
+    private Random random;
+    private ClientPacketLossHandler packetLossHandler;
 
     private const string PacketCountId = "PACKET_COUNT";
     private const string ConfirmationId = "CONFIRMATION";
     private const string LostPacketsId = "LOST_PACKETS";
 
 
+
     public UDPClient(string serverIpAddress, int serverPort, string confirmationIpAddress, int confirmationPort)
     {
+        SentPackets = new List<UdpPacket>();
+        packetLossHandler = new ClientPacketLossHandler(this);
+
         serverAddress = IPAddress.Parse(serverIpAddress);
         this.serverPort = serverPort;
         sender = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
@@ -29,7 +36,7 @@ public class UDPClient
         confirmationAddress = IPAddress.Parse(confirmationIpAddress);
         this.confirmationPort = confirmationPort;
         confirmationReceiver = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        confirmationReceiver.Bind(new IPEndPoint(confirmationAddress, confirmationPort));
+        confirmationReceiver.Bind(new IPEndPoint(confirmationAddress, this.confirmationPort));
 
         random = new Random();
         isSending = false;
@@ -48,6 +55,13 @@ public class UDPClient
         }
     }
 
+    public async Task SendPacketAsync(UdpPacket packet)
+    {
+        byte[] packetBytes = packet.ToBytes();
+        await sender.SendToAsync(new ArraySegment<byte>(packetBytes), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
+        Console.WriteLine($"Отправлен пакет {packet.PacketId} размером в {packet.Data.Length} байт");
+    }
+
     private async Task PacketSendingAsync()
     {
         byte[] data = GenerateRandomData();
@@ -60,12 +74,11 @@ public class UDPClient
 
         foreach (var packet in packets)
         {
-            byte[] packetBytes = packet.ToBytes();
-            await sender.SendToAsync(new ArraySegment<byte>(packetBytes), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
-            Console.WriteLine($"Отправлен пакет {packet.PacketId} размером в {packet.Data.Length} байт");
+            SentPackets.Add(packet);
+            await SendPacketAsync(packet);
             //await Task.Delay(500); // задержка между отправками
         }
-        await ReceiveConfirmationOrLostPackets();
+        await WaitForConfirmationOrResendAsync();
     }    
 
     private async Task SendPacketCountAsync(int totalPackets)
@@ -80,25 +93,38 @@ public class UDPClient
         await sender.SendToAsync(new ArraySegment<byte>(message), SocketFlags.None, new IPEndPoint(serverAddress, serverPort));
     }
 
-    private async Task ReceiveConfirmationOrLostPackets()
+    private async Task WaitForConfirmationOrResendAsync()
     {
-        byte[] buffer = new byte[65535];
-        EndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
+        bool allPacketsConfirmed = false;
 
-        var result = await confirmationReceiver.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, remoteEndPoint);
-        string message = Encoding.UTF8.GetString(buffer, 0, result.ReceivedBytes);
-
-        if (message.StartsWith(ConfirmationId))
+        while (!allPacketsConfirmed)
         {
-            Console.WriteLine("Подтверждение получено от сервера: " + message);
-            isSending = false;
+            byte[] buffer = new byte[65535];
+            EndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
+
+            var result = await confirmationReceiver.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, remoteEndPoint);
+            string message = Encoding.UTF8.GetString(buffer, 0, result.ReceivedBytes);
+
+            if (message.StartsWith(ConfirmationId))
+            {
+                Console.WriteLine("Подтверждение получено от сервера: " + message);
+                SentPackets.Clear();
+                allPacketsConfirmed = true;
+            }
+            else if (message.StartsWith(LostPacketsId))
+            {
+                string[] parts = message.Substring(LostPacketsId.Length + 1).Split(',');
+                List<uint> lostPackets = parts.Select(uint.Parse).ToList();
+
+                Console.WriteLine("Потерянные пакеты: " + string.Join(", ", lostPackets));
+                packetLossHandler.SetLostPacketIds(lostPackets);
+                await packetLossHandler.ResendLostPacketsAsync();
+            }
         }
-        else if (message.StartsWith(LostPacketsId))
-        {
-            string[] parts = message.Substring(LostPacketsId.Length + 1).Split(',');
-            List<uint> lostPackets = parts.Select(uint.Parse).ToList();
 
-            Console.WriteLine("Потерянные пакеты: " + string.Join(", ", lostPackets));
+        if (!allPacketsConfirmed)
+        {
+            Console.WriteLine("Не удалось получить подтверждение от сервера после нескольких попыток.");
         }
     }
 
