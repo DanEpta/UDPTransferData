@@ -27,7 +27,10 @@
             MissingPacketIds.Count > 0;
 
         public List<uint> GetMissingPacketIds() =>
-            new List<uint>(MissingPacketIds);        
+            new List<uint>(MissingPacketIds);
+
+        public void AddMissingPackets(IEnumerable<uint> missingPackets) =>
+            MissingPacketIds.AddRange(missingPackets.Except(MissingPacketIds));
 
         public void AddReceivedPacketId(uint packetId)
         {
@@ -40,7 +43,7 @@
             if (!ExpectedPacketCount.HasValue)
                 throw new InvalidOperationException("ExpectedPacketCount is not set.");
 
-            return ReceivedPacketIds.Count == ExpectedPacketCount && !HasLostPackets();
+            return (ReceivedPacketIds.Count == ExpectedPacketCount) && !HasLostPackets();
         }
 
         public List<uint> FullGetMissingPacketIds() 
@@ -50,12 +53,12 @@
 
             List<uint> missingPacketsId = new List<uint>();
 
-            for (uint i = 0; i <= ExpectedPacketCount; i++)
+            for (uint i = 0; i < ExpectedPacketCount; i++)
                 if (!ReceivedPacketIds.Contains(i))
                     missingPacketsId.Add(i);
 
             return missingPacketsId;
-        }
+        }        
 
         public void Reset()
         {

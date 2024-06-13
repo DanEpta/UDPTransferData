@@ -9,12 +9,15 @@ namespace UdpProgram.Udp
     {
         private Socket receiver;
         PacketChecker packetChecker;
+        ServerPacketLossHandler packetLossHandler;
         private readonly IPAddress localAddress;
         private readonly IPAddress remoteAddress;
         private readonly int localPort;
 
         private const string PacketCountId = "PACKET_COUNT";
+        private const string LostPacketsId = "LOST_PACKETS";
         private const string ConfirmationId = "CONFIRMATION";
+
         private List<byte[]> receivedPackets;
         private uint expectedPackets;
 
@@ -28,8 +31,8 @@ namespace UdpProgram.Udp
             receiver = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             receivedPackets = new List<byte[]>();
             packetChecker = new PacketChecker();
+            packetLossHandler = new ServerPacketLossHandler(packetChecker, this);
         }
-
 
         public async Task StartReceivingAsync()
         {
@@ -40,11 +43,20 @@ namespace UdpProgram.Udp
 
             while (true)
             {
-                // Прием данных
                 var result = await receiver.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, new IPEndPoint(IPAddress.Any, 0));
                 byte[] receivedData = buffer.Take(result.ReceivedBytes).ToArray();
                 DataProcessing(receivedData);
             }
+        }
+
+        public void SendLostPackets(List<uint> lostPacketIds)
+        {
+            string lostPacketsMessage = $"{LostPacketsId}:{string.Join(",", lostPacketIds)}";
+            byte[] lostPacketsData = Encoding.UTF8.GetBytes(lostPacketsMessage);
+            EndPoint clientEndPoint = new IPEndPoint(remoteAddress, localPort + 1);
+            receiver.SendTo(lostPacketsData, clientEndPoint);
+            packetChecker.Reset();
+            Console.WriteLine("Список потерянных пакетов отправлен клиенту.");
         }
 
         private void DataProcessing(byte[] receivedData)
@@ -53,6 +65,7 @@ namespace UdpProgram.Udp
             {
                 expectedPackets = BitConverter.ToUInt32(receivedData, PacketCountId.Length);
                 packetChecker.SetExpectedPacketCount(expectedPackets);
+                packetLossHandler.Start(expectedPackets);
 
                 Console.WriteLine($"Ожидается {expectedPackets} пакетов.");
             }
@@ -66,22 +79,9 @@ namespace UdpProgram.Udp
 
                 if (packetChecker.HaveAllPackages())
                     DataProcessingReceived();
-                /*else if (packetChecker.HasLostPackets())
-                {
-                    Console.WriteLine("Есть потерянные пакеты: \n"); // надо обработать
-
-                    List<uint> missingIds = packetChecker.GetMissingPacketIds();
-
-                    foreach (var missingId in missingIds)
-                        Console.Write($"{missingId} \t");
-                    Console.WriteLine();
-                    packetChecker.Reset();
-                    expectedPackets = 0;
-                    receivedPackets.Clear();
-                }*/
             }
-        }        
-
+        }
+                
         private bool IsPacketCountMessage(byte[] data)
         {
             string id = Encoding.UTF8.GetString(data, 0, PacketCountId.Length);
@@ -101,10 +101,10 @@ namespace UdpProgram.Udp
         {
             Console.WriteLine("Все пакеты получены");
             SendConfirmation();
-            //////////////// надо что то сделать с полученными данными
             expectedPackets = 0;
             packetChecker.Reset();
             receivedPackets.Clear();
+            packetLossHandler.Stop();
         }
     }
 }
