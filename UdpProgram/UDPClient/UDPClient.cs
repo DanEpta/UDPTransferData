@@ -142,7 +142,7 @@ public class UDPClient
 
     private byte[] GenerateRandomData()
     {
-        int dataSize = random.Next(512, 1024000);
+        int dataSize = random.Next(512, 10240000);
         byte[] data = new byte[dataSize];
         random.NextBytes(data); // Заполнение данных случайными байтами
 

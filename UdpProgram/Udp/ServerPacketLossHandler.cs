@@ -9,7 +9,7 @@
         private uint expectedPackets;
         private int checkIntervalMilliseconds;
 
-        public ServerPacketLossHandler(PacketChecker packetChecker, UDPServer udpServer, int checkIntervalMilliseconds = 5000)
+        public ServerPacketLossHandler(PacketChecker packetChecker, UDPServer udpServer, int checkIntervalMilliseconds = 100)
         {
             this.packetChecker = packetChecker;
             this.udpServer = udpServer;

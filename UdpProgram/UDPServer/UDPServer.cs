@@ -55,7 +55,6 @@ namespace UdpProgram.Udp
             byte[] lostPacketsData = Encoding.UTF8.GetBytes(lostPacketsMessage);
             EndPoint clientEndPoint = new IPEndPoint(remoteAddress, localPort + 1);
             receiver.SendTo(lostPacketsData, clientEndPoint);
-            packetChecker.Reset();
             Console.WriteLine("Список потерянных пакетов отправлен клиенту.");
         }
 
