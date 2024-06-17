@@ -2,6 +2,9 @@
 using System.Text;
 using System.Net;
 using System.Net.Sockets;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace UdpProgram.Udp
 {
@@ -19,8 +22,8 @@ namespace UdpProgram.Udp
         private const string ConfirmationId = "CONFIRMATION";
 
         private List<byte[]> receivedPackets;
+        private FileAssembler fileAssembler;
         private uint expectedPackets;
-
 
         public UDPServer(string localIpAddress, int localPort, string remoteIpAddress)
         {
@@ -32,6 +35,7 @@ namespace UdpProgram.Udp
             receivedPackets = new List<byte[]>();
             packetChecker = new PacketChecker();
             packetLossHandler = new ServerPacketLossHandler(packetChecker, this);
+            fileAssembler = new FileAssembler();
         }
 
         public async Task StartReceivingAsync()
@@ -71,16 +75,24 @@ namespace UdpProgram.Udp
             else
             {
                 UdpPacket packet = UdpPacket.FromBytes(receivedData);
-                packetChecker.AddReceivedPacketId(packet.PacketId);
-                receivedPackets.Add(packet.Data);
 
+                if (!packetChecker.AddReceivedPacketId(packet.PacketId))
+                {
+                    Console.WriteLine($"Получен неожиданный пакет с ID {packet.PacketId}. Пакет проигнорирован.");
+                    return;
+                }
+
+                //packetChecker.AddReceivedPacketId(packet.PacketId);
+
+                receivedPackets.Add(packet.Data);
+                fileAssembler.AddPacket(packet.PacketId, packet.Data);
                 Console.WriteLine($"Получен пакет {packet.PacketId} размером {packet.ToBytes().Length} байт");
 
                 if (packetChecker.HaveAllPackages())
                     DataProcessingReceived();
             }
         }
-                
+
         private bool IsPacketCountMessage(byte[] data)
         {
             string id = Encoding.UTF8.GetString(data, 0, PacketCountId.Length);
@@ -99,10 +111,12 @@ namespace UdpProgram.Udp
         private void DataProcessingReceived()
         {
             Console.WriteLine("Все пакеты получены");
+            fileAssembler.AssembleFile();
             SendConfirmation();
             expectedPackets = 0;
             packetChecker.Reset();
             receivedPackets.Clear();
+            fileAssembler.Reset();
             packetLossHandler.Stop();
         }
     }

@@ -5,7 +5,6 @@
         private readonly PacketChecker packetChecker;
         private readonly UDPServer udpServer;
         private readonly Timer packetCheckTimer;
-        private readonly object lockObject = new object();
         private uint expectedPackets;
         private int checkIntervalMilliseconds;
 
@@ -24,20 +23,25 @@
             packetCheckTimer.Change(checkIntervalMilliseconds, checkIntervalMilliseconds);
         }
 
-        public void Stop() => 
+        public void Stop() =>
             packetCheckTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
         private void CheckForLostPackets(object state)
         {
-            lock (lockObject)
+            List<uint> missingIds;
+            lock (packetChecker)
             {
-                List<uint> missingIds = packetChecker.FullGetMissingPacketIds();
-                if (missingIds.Any())
+                missingIds = packetChecker.FullGetMissingPacketIds();
+            }
+
+            if (missingIds.Any())
+            {
+                lock (packetChecker)
                 {
                     packetChecker.AddMissingPackets(missingIds);
-                    Console.WriteLine("Обнаружены потерянные пакеты: " + string.Join(", ", missingIds));
-                    udpServer.SendLostPackets(missingIds);
                 }
+                Console.WriteLine("Обнаружены потерянные пакеты: " + string.Join(", ", missingIds));
+                udpServer.SendLostPackets(missingIds);
             }
         }
     }
