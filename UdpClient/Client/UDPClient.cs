@@ -54,7 +54,7 @@ public class UDPClient
             var result = await receiver.ReceiveFromAsync(data, SocketFlags.None, new IPEndPoint(IPAddress.Any, 0));
             int lostPacketNumber = BitConverter.ToInt32(data, 0); // извлекаем номер потерянного пакета  
 
-                lostPacketsCount++; //!!!!!!!!!!!!!!!
+            lostPacketsCount++; //!!!!!!!!!!!!!!!
             // отправляем потерянный пакет повторно
             if (sentPacketBuffer.TryGetValue(lostPacketNumber, out byte[] lostPacket))
             {

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Net;
-using UdpProgram.Udp;
 using System.Text;
+using UdpProgram.Udp;
 
 public class UDPClient
 {
@@ -21,7 +21,6 @@ public class UDPClient
     private const string PacketCountId = "PACKET_COUNT";
     private const string ConfirmationId = "CONFIRMATION";
     private const string LostPacketsId = "LOST_PACKETS";
-
 
 
     public UDPClient(string serverIpAddress, int serverPort, string confirmationIpAddress, int confirmationPort)
@@ -43,13 +42,13 @@ public class UDPClient
     }
 
 
-    public async Task StartSendingAsync()
+    public async Task StartSendingAsync(byte[] data)
     {
 
         while (true)
         {
             if (!isSending)
-                await PacketSendingAsync();
+                await PacketSendingAsync(data);
             else
                 await Task.Delay(1000);
         }
@@ -62,9 +61,8 @@ public class UDPClient
         Console.WriteLine($"Отправлен пакет {packet.PacketId} размером в {packet.Data.Length} байт");
     }
 
-    private async Task PacketSendingAsync()
+    private async Task PacketSendingAsync(byte[] data)
     {
-        byte[] data = GenerateRandomData();
         List<UdpPacket> packets = UdpSeparationData.SeparationDataToPacket(data);
 
         int totalPackets = packets.Count;
@@ -121,31 +119,7 @@ public class UDPClient
                 await packetLossHandler.ResendLostPacketsAsync();
             }
         }
-
         if (!allPacketsConfirmed)
-        {
             Console.WriteLine("Не удалось получить подтверждение от сервера после нескольких попыток.");
-        }
-    }
-
-    private List<uint> ParseLostPackets(string lostPacketsString)
-    {
-        List<uint> lostPackets = new List<uint>();
-        string[] lostPacketsArray = lostPacketsString.Split(',');
-
-        foreach (string packetIdString in lostPacketsArray)
-            if (uint.TryParse(packetIdString, out uint packetId))
-                lostPackets.Add(packetId);
-
-        return lostPackets;
-    }
-
-    private byte[] GenerateRandomData()
-    {
-        int dataSize = random.Next(512, 10240000);
-        byte[] data = new byte[dataSize];
-        random.NextBytes(data); // Заполнение данных случайными байтами
-
-        return data;
     }
 }
