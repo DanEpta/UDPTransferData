@@ -1,6 +1,4 @@
-﻿
-
-namespace UdpProgramStatistic.Udp
+﻿namespace UdpProgramStatistic
 {
     public class UdpPacket
     {

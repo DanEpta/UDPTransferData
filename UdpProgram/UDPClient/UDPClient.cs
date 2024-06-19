@@ -1,5 +1,4 @@
-﻿using System;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using UdpProgram.Udp;
@@ -14,14 +13,11 @@ public class UDPClient
     private readonly IPAddress confirmationAddress;
     private readonly int serverPort;
     private readonly int confirmationPort;
-    private bool isSending;
-    private Random random;
     private ClientPacketLossHandler packetLossHandler;
 
     private const string PacketCountId = "PACKET_COUNT";
     private const string ConfirmationId = "CONFIRMATION";
     private const string LostPacketsId = "LOST_PACKETS";
-
 
     public UDPClient(string serverIpAddress, int serverPort, string confirmationIpAddress, int confirmationPort)
     {
@@ -31,28 +27,17 @@ public class UDPClient
         serverAddress = IPAddress.Parse(serverIpAddress);
         this.serverPort = serverPort;
         sender = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        sender.ReceiveTimeout = 1000; // !!!!!!!!!!!
+        sender.SendTimeout = 1000; //!!!!!!!!!!!
 
         confirmationAddress = IPAddress.Parse(confirmationIpAddress);
         this.confirmationPort = confirmationPort;
         confirmationReceiver = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         confirmationReceiver.Bind(new IPEndPoint(confirmationAddress, this.confirmationPort));
-
-        random = new Random();
-        isSending = false;
     }
 
-
-    public async Task StartSendingAsync(byte[] data)
-    {
-
-        while (true)
-        {
-            if (!isSending)
-                await PacketSendingAsync(data);
-            else
-                await Task.Delay(1000);
-        }
-    }
+    public async Task StartSendingAsync(byte[] data) =>
+        await PacketSendingAsync(data);
 
     public async Task SendPacketAsync(UdpPacket packet)
     {
@@ -74,10 +59,9 @@ public class UDPClient
         {
             SentPackets.Add(packet);
             await SendPacketAsync(packet);
-            //await Task.Delay(500); // задержка между отправками
         }
         await WaitForConfirmationOrResendAsync();
-    }    
+    }
 
     private async Task SendPacketCountAsync(int totalPackets)
     {

@@ -32,6 +32,8 @@ namespace UdpProgram.Udp
             remoteAddress = IPAddress.Parse(remoteIpAddress);
             expectedPackets = 0;
             receiver = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            receiver.ReceiveBufferSize = 65535; //!!!!!!!!!!!!
+            receiver.ReceiveTimeout = 2000; // !!!!!!!!!!!!!
             receivedPackets = new List<byte[]>();
             packetChecker = new PacketChecker();
             packetLossHandler = new ServerPacketLossHandler(packetChecker, this);
