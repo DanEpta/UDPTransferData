@@ -17,3 +17,10 @@ static byte[] GenerateRandomData()
     random.NextBytes(data);
     return data;
 }
+
+
+/*
+int port = 4004;
+CustomUdpServer server = new CustomUdpServer(port);
+server.StartReceiving();
+*/
