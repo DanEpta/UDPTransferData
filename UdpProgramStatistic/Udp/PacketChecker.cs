@@ -1,4 +1,4 @@
-﻿namespace UdpProgram.Udp
+﻿namespace UdpProgramStatistic
 {
     public class PacketChecker
     {
@@ -65,7 +65,7 @@
         public bool HaveAllPackages()
         {
             if (!ExpectedPacketCount.HasValue)
-                throw new InvalidOperationException("ExpectedPacketCount is not set.");
+                throw new InvalidOperationException("ExpectedPacketCount is not set. place HaveAllPackages");
 
             lock (lockObject)
                 return (ReceivedPacketIds.Count == ExpectedPacketCount) && !HasLostPackets();
@@ -74,7 +74,7 @@
         public List<uint> FullGetMissingPacketIds()
         {
             if (!ExpectedPacketCount.HasValue)
-                throw new InvalidOperationException("ExpectedPacketCount is not set.");
+                throw new InvalidOperationException("ExpectedPacketCount is not set. place FullGetMissingPacketIds");
 
             List<uint> missingPacketsId = new List<uint>();
 
